@@ -32,7 +32,7 @@ impl<'a> Rasterizer<'a> {
 
     fn ndc_to_screen(&self, v: Vec2) -> Pixel {
         let x = ((v.x + 1.0) / 2.0) * self.framebuffer.width as f32;
-        let y = ((v.y + 1.0) / 2.0) * self.framebuffer.height as f32;
+        let y = ((-v.y + 1.0) / 2.0) * self.framebuffer.height as f32;
 
         Pixel {
             x: x.floor() as usize,
@@ -46,8 +46,8 @@ impl<'a> Rasterizer<'a> {
         let z = v.z + offset;
 
         Vec2 {
-            x: v.x / z / (aspect * (fov_radians / 2.0).tan()),
-            y: v.y / z / (fov_radians / 2.0).tan(),
+            x: (v.x + 0.025) / z / (aspect * (fov_radians / 2.0).tan()),
+            y: (v.y - 0.112) / z / (fov_radians / 2.0).tan(),
         }
     }
 

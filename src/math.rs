@@ -30,7 +30,15 @@ pub struct Vec3 {
 }
 
 impl Vec3 {
-    pub fn new(x: f32, y: f32, z: f32) -> Vec3 {
+    pub fn new(x: f32, y: f32, z: f32) -> Self {
         Self { x, y, z }
+    }
+
+    // pub fn splat(v: f32) -> Self {
+    //     Self::new(v, v, v)
+    // }
+
+    pub fn from_array(a: [f32; 3]) -> Self {
+        Self::new(a[0], a[1], a[2])
     }
 }
