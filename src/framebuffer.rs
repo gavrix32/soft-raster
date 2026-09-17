@@ -1,10 +1,11 @@
+use crate::math::Pixel;
 use std::fs::File;
 use std::io::{BufWriter, Write};
 use std::path::Path;
 
 pub struct Framebuffer {
-    width: usize,
-    height: usize,
+    pub width: usize,
+    pub height: usize,
     color: Vec<u8>,
     depth: Vec<f32>,
 }
@@ -22,11 +23,11 @@ impl Framebuffer {
     // fn clear_color(&mut self) {}
     // fn clear_depth(&mut self) {}
 
-    pub fn set_pixel(&mut self, x: usize, y: usize, color: &[u8], depth: f32) {
-        if x >= self.width || y >= self.height {
+    pub fn set_pixel(&mut self, p: Pixel, color: &[u8], depth: f32) {
+        if p.x >= self.width || p.y >= self.height {
             return;
         }
-        let index = y * self.width + x;
+        let index = p.y * self.width + p.x;
         if depth >= self.depth[index] {
             return;
         }
