@@ -33,6 +33,7 @@ impl Framebuffer {
         }
         let base = index * 3;
         self.color[base..base + 3].copy_from_slice(color);
+        self.depth[index] = depth;
     }
 
     pub fn save_ppm(&self, path: impl AsRef<Path>) -> std::io::Result<()> {

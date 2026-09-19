@@ -1,5 +1,5 @@
 use crate::framebuffer::Framebuffer;
-use crate::math::{Pixel, Vec2, Vec3};
+use crate::math::{Mat4, Pixel, Vec3, Vec4};
 
 #[allow(dead_code)]
 pub enum PolygonMode {
@@ -11,26 +11,27 @@ pub enum PolygonMode {
 pub struct Rasterizer<'a> {
     framebuffer: &'a mut Framebuffer,
     polygon_mode: PolygonMode,
-    fov: f32,
-    offset: f32,
+    view_proj: Mat4,
 }
 
 impl<'a> Rasterizer<'a> {
     pub fn new(
         framebuffer: &'a mut Framebuffer,
         polygon_mode: PolygonMode,
-        fov: f32,
-        offset: f32,
+        view_proj: Mat4,
     ) -> Self {
         Self {
             framebuffer,
             polygon_mode,
-            fov,
-            offset,
+            view_proj,
         }
     }
 
-    fn ndc_to_screen(&self, v: Vec2) -> Pixel {
+    fn clip_to_ndc(&self, v: Vec4) -> Vec3 {
+        Vec3::new(v.x / v.w, v.y / v.w, v.z / v.w)
+    }
+
+    fn ndc_to_screen(&self, v: Vec3) -> Pixel {
         let x = ((v.x + 1.0) / 2.0) * self.framebuffer.width as f32;
         let y = ((-v.y + 1.0) / 2.0) * self.framebuffer.height as f32;
 
@@ -40,19 +41,9 @@ impl<'a> Rasterizer<'a> {
         }
     }
 
-    fn project(&self, v: Vec3, offset: f32) -> Vec2 {
-        let fov_radians = self.fov.to_radians();
-        let aspect = self.framebuffer.width as f32 / self.framebuffer.height as f32;
-        let z = v.z + offset;
-
-        Vec2 {
-            x: (v.x + 0.025) / z / (aspect * (fov_radians / 2.0).tan()),
-            y: (v.y - 0.112) / z / (fov_radians / 2.0).tan(),
-        }
-    }
-
     pub fn draw_point(&mut self, v: Vec3, color: &[u8]) {
-        let v_ndc = self.project(v, self.offset);
+        let v_clip = self.view_proj * Vec4::new(v.x, v.y, v.z, 1.0);
+        let v_ndc = self.clip_to_ndc(v_clip);
         let v_screen = self.ndc_to_screen(v_ndc);
         self.framebuffer.set_pixel(v_screen, color, 0.0);
     }
@@ -62,8 +53,10 @@ impl<'a> Rasterizer<'a> {
      * Web: https://en.wikipedia.org/wiki/Bresenham's_line_algorithm
      */
     fn draw_line(&mut self, v0: Vec3, v1: Vec3, color: &[u8]) {
-        let v0_ndc = self.project(v0, self.offset);
-        let v1_ndc = self.project(v1, self.offset);
+        let v0_clip = self.view_proj * Vec4::new(v0.x, v0.y, v0.z, 1.0);
+        let v1_clip = self.view_proj * Vec4::new(v1.x, v1.y, v1.z, 1.0);
+        let v0_ndc = self.clip_to_ndc(v0_clip);
+        let v1_ndc = self.clip_to_ndc(v1_clip);
         let v0_screen = self.ndc_to_screen(v0_ndc);
         let v1_screen = self.ndc_to_screen(v1_ndc);
 
@@ -81,18 +74,15 @@ impl<'a> Rasterizer<'a> {
         loop {
             self.framebuffer
                 .set_pixel(Pixel::new(x0 as usize, y0 as usize), color, 0.0);
+            if x0 == x1 && y0 == y1 {
+                break;
+            }
             let e2 = 2 * error;
             if e2 >= dy {
-                if x0 == x1 {
-                    break;
-                }
                 error += dy;
                 x0 += sx;
             }
             if e2 <= dx {
-                if y0 == y1 {
-                    break;
-                }
                 error += dx;
                 y0 += sy;
             }
