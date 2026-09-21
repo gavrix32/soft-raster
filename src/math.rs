@@ -1,14 +1,42 @@
 use std::ops::{Add, Div, Mul, Sub};
 
 #[derive(Copy, Clone)]
-pub struct Pixel {
+pub struct Vec2U {
     pub x: usize,
     pub y: usize,
 }
 
-impl Pixel {
-    pub fn new(x: usize, y: usize) -> Pixel {
+impl Vec2U {
+    pub fn new(x: usize, y: usize) -> Vec2U {
         Self { x, y }
+    }
+}
+
+#[derive(Copy, Clone, PartialEq)]
+pub struct Vec2I {
+    pub x: i32,
+    pub y: i32,
+}
+
+impl Vec2I {
+    pub fn new(x: i32, y: i32) -> Vec2I {
+        Self { x, y }
+    }
+
+    pub fn as_vec2u(self) -> Vec2U {
+        Vec2U::new(self.x as usize, self.y as usize)
+    }
+
+    pub fn cross(self, other: Self) -> i32 {
+        self.x * other.y - self.y * other.x
+    }
+}
+
+impl Sub for Vec2I {
+    type Output = Self;
+
+    fn sub(self, rhs: Self) -> Self::Output {
+        Self::new(self.x - rhs.x, self.y - rhs.y)
     }
 }
 
@@ -17,7 +45,7 @@ impl Pixel {
 //     pub x: f32,
 //     pub y: f32,
 // }
-
+//
 // impl Vec2 {
 //     fn new(x: f32, y: f32) -> Vec2 {
 //         Self { x, y }
@@ -48,7 +76,7 @@ impl Vec3 {
         Self::new(a[0], a[1], a[2])
     }
 
-    pub fn dot(self, v: Vec3) -> f32 {
+    pub fn dot(self, v: Self) -> f32 {
         self.x * v.x + self.y * v.y + self.z * v.z
     }
 
@@ -65,7 +93,7 @@ impl Vec3 {
         }
     }
 
-    pub fn cross(self, v: Vec3) -> Self {
+    pub fn cross(self, v: Self) -> Self {
         Self::new(
             self.y * v.z - self.z * v.y,
             self.z * v.x - self.x * v.z,
@@ -107,6 +135,19 @@ impl Add for Vec3 {
 }
 
 #[derive(Copy, Clone)]
+pub struct Vec3I {
+    pub x: i32,
+    pub y: i32,
+    pub z: i32,
+}
+
+impl Vec3I {
+    pub fn new(x: i32, y: i32, z: i32) -> Vec3I {
+        Self { x, y, z }
+    }
+}
+
+#[derive(Copy, Clone)]
 pub struct Vec4 {
     pub x: f32,
     pub y: f32,
@@ -134,17 +175,17 @@ pub struct Mat4 {
 }
 
 impl Mat4 {
-    // pub fn identity() -> Self {
-    //     Self {
-    //         #[rustfmt::skip]
-    //         m: [
-    //             1.0, 0.0, 0.0, 0.0,
-    //             0.0, 1.0, 0.0, 0.0,
-    //             0.0, 0.0, 1.0, 0.0,
-    //             0.0, 0.0, 0.0, 1.0,
-    //         ],
-    //     }
-    // }
+    pub fn identity() -> Self {
+        Self {
+            #[rustfmt::skip]
+            m: [
+                1.0, 0.0, 0.0, 0.0,
+                0.0, 1.0, 0.0, 0.0,
+                0.0, 0.0, 1.0, 0.0,
+                0.0, 0.0, 0.0, 1.0,
+            ],
+        }
+    }
 
     // pub fn zero() -> Self {
     //     Self { m: [0.0; 16] }

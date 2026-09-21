@@ -1,4 +1,4 @@
-use crate::math::Pixel;
+use crate::math::Vec2U;
 use std::fs::File;
 use std::io::{BufWriter, Write};
 use std::path::Path;
@@ -23,7 +23,7 @@ impl Framebuffer {
     // fn clear_color(&mut self) {}
     // fn clear_depth(&mut self) {}
 
-    pub fn set_pixel(&mut self, p: Pixel, color: &[u8], depth: f32) {
+    pub fn set_pixel(&mut self, p: Vec2U, color: &[u8], depth: f32) {
         if p.x >= self.width || p.y >= self.height {
             return;
         }

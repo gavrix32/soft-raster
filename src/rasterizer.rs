@@ -1,5 +1,5 @@
 use crate::framebuffer::Framebuffer;
-use crate::math::{Mat4, Pixel, Vec3, Vec4};
+use crate::math::{Mat4, Vec2I, Vec2U, Vec3, Vec3I, Vec4};
 
 #[allow(dead_code)]
 pub enum PolygonMode {
@@ -31,21 +31,25 @@ impl<'a> Rasterizer<'a> {
         Vec3::new(v.x / v.w, v.y / v.w, v.z / v.w)
     }
 
-    fn ndc_to_screen(&self, v: Vec3) -> Pixel {
-        let x = ((v.x + 1.0) / 2.0) * self.framebuffer.width as f32;
-        let y = ((-v.y + 1.0) / 2.0) * self.framebuffer.height as f32;
+    fn ndc_to_screen(&self, v: Vec3) -> Vec2I {
+        let x = ((v.x + 1.0) / 2.0) * (self.framebuffer.width - 1) as f32;
+        let y = ((-v.y + 1.0) / 2.0) * (self.framebuffer.height - 1) as f32;
 
-        Pixel {
-            x: x.floor() as usize,
-            y: y.floor() as usize,
+        Vec2I {
+            x: x.floor() as i32,
+            y: y.floor() as i32,
         }
     }
 
-    pub fn draw_point(&mut self, v: Vec3, color: &[u8]) {
+    fn project(&self, v: Vec3) -> (Vec2I, f32) {
         let v_clip = self.view_proj * Vec4::new(v.x, v.y, v.z, 1.0);
         let v_ndc = self.clip_to_ndc(v_clip);
-        let v_screen = self.ndc_to_screen(v_ndc);
-        self.framebuffer.set_pixel(v_screen, color, 0.0);
+        (self.ndc_to_screen(v_ndc), v_ndc.z)
+    }
+
+    fn draw_point(&mut self, v: Vec3, color: &[u8]) {
+        let (p, z) = self.project(v);
+        self.framebuffer.set_pixel(p.as_vec2u(), color, z);
     }
 
     /**
@@ -53,39 +57,99 @@ impl<'a> Rasterizer<'a> {
      * Web: https://en.wikipedia.org/wiki/Bresenham's_line_algorithm
      */
     fn draw_line(&mut self, v0: Vec3, v1: Vec3, color: &[u8]) {
-        let v0_clip = self.view_proj * Vec4::new(v0.x, v0.y, v0.z, 1.0);
-        let v1_clip = self.view_proj * Vec4::new(v1.x, v1.y, v1.z, 1.0);
-        let v0_ndc = self.clip_to_ndc(v0_clip);
-        let v1_ndc = self.clip_to_ndc(v1_clip);
-        let v0_screen = self.ndc_to_screen(v0_ndc);
-        let v1_screen = self.ndc_to_screen(v1_ndc);
+        let (mut p0, z0) = self.project(v0);
+        let (p1, z1) = self.project(v1);
 
-        let mut x0 = v0_screen.x as i32;
-        let mut y0 = v0_screen.y as i32;
-        let x1 = v1_screen.x as i32;
-        let y1 = v1_screen.y as i32;
-
-        let dx = (x1 - x0).abs();
-        let sx = if x0 < x1 { 1 } else { -1 };
-        let dy = -(y1 - y0).abs();
-        let sy = if y0 < y1 { 1 } else { -1 };
+        let dx = (p1.x - p0.x).abs();
+        let sx = if p0.x < p1.x { 1 } else { -1 };
+        let dy = -(p1.y - p0.y).abs();
+        let sy = if p0.y < p1.y { 1 } else { -1 };
         let mut error = dx + dy;
 
         loop {
-            self.framebuffer
-                .set_pixel(Pixel::new(x0 as usize, y0 as usize), color, 0.0);
-            if x0 == x1 && y0 == y1 {
+            self.framebuffer.set_pixel(p0.as_vec2u(), color, 0.0);
+            if p0 == p1 {
                 break;
             }
             let e2 = 2 * error;
             if e2 >= dy {
                 error += dy;
-                x0 += sx;
+                p0.x += sx;
             }
             if e2 <= dx {
                 error += dx;
-                y0 += sy;
+                p0.y += sy;
             }
+        }
+    }
+
+    fn fill_triangle(&mut self, v0: Vec3, v1: Vec3, v2: Vec3, color: &[u8]) {
+        // CW -> CCW
+        let (v1, v2) = (v2, v1);
+
+        let (p0, z0) = self.project(v0);
+        let (p1, z1) = self.project(v1);
+        let (p2, z2) = self.project(v2);
+
+        let area = (p1 - p0).cross(p2 - p0);
+        let inv_area = 1.0 / area as f32;
+
+        if area <= 0 {
+            return;
+        }
+
+        let bbox_min = Vec2I::new(p0.x.min(p1.x.min(p2.x)), p0.y.min(p1.y.min(p2.y)));
+        let bbox_max = Vec2I::new(p0.x.max(p1.x.max(p2.x)), p0.y.max(p1.y.max(p2.y)));
+
+        fn top_left_bias(a: Vec2I, b: Vec2I) -> i32 {
+            let edge = b - a;
+            let is_top = edge.y == 0 && edge.x > 0;
+            let is_left = edge.y < 0;
+
+            if is_top || is_left { 0 } else { -1 }
+        }
+
+        let bias = Vec3I::new(
+            top_left_bias(p1, p2),
+            top_left_bias(p2, p0),
+            top_left_bias(p0, p1),
+        );
+
+        let delta_p0 = p1 - p2;
+        let delta_p1 = p2 - p0;
+        let delta_p2 = p0 - p1;
+
+        let mut w0_x = (p2 - p1).cross(bbox_min - p1);
+        let mut w1_x = (p0 - p2).cross(bbox_min - p2);
+        let mut w2_x = (p1 - p0).cross(bbox_min - p0);
+
+        for y in bbox_min.y..=bbox_max.y {
+            let mut w0 = w0_x;
+            let mut w1 = w1_x;
+            let mut w2 = w2_x;
+            for x in bbox_min.x..=bbox_max.x {
+                let is_inside = w0 + bias.x >= 0 && w1 + bias.y >= 0 && w2 + bias.z >= 0;
+
+                if is_inside {
+                    // let barycentric = Vec3::new(
+                    //     e0 as f32 * inv_area,
+                    //     e1 as f32 * inv_area,
+                    //     e2 as f32 * inv_area,
+                    // );
+
+                    let p = Vec2I::new(x, y);
+                    let z = (w0 as f32 * z0 + w1 as f32 * z1 + w2 as f32 * z2) * inv_area;
+
+                    // self.framebuffer.set_pixel(p.as_vec2u(), color, z);
+                    self.framebuffer.set_pixel(p.as_vec2u(), &[((z + 1.0) * 0.5 * 255.0) as u8, 0, 0], z);
+                }
+                w0 += delta_p0.y;
+                w1 += delta_p1.y;
+                w2 += delta_p2.y;
+            }
+            w0_x -= delta_p0.x;
+            w1_x -= delta_p1.x;
+            w2_x -= delta_p2.x;
         }
     }
 
@@ -101,7 +165,7 @@ impl<'a> Rasterizer<'a> {
                 self.draw_line(v1, v2, color);
                 self.draw_line(v2, v0, color);
             }
-            PolygonMode::Fill => {}
+            PolygonMode::Fill => self.fill_triangle(v0, v1, v2, color),
         }
     }
 }
