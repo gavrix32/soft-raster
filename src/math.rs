@@ -1,4 +1,4 @@
-use std::ops::{Add, Div, Mul, Sub};
+use std::ops::{Add, AddAssign, Div, Mul, Sub};
 
 #[derive(Copy, Clone)]
 pub struct Vec2U {
@@ -118,6 +118,14 @@ impl Mul for Vec3 {
     }
 }
 
+impl Mul<f32> for Vec3 {
+    type Output = Self;
+
+    fn mul(self, rhs: f32) -> Self::Output {
+        Self::new(self.x * rhs, self.y * rhs, self.z * rhs)
+    }
+}
+
 impl Sub for Vec3 {
     type Output = Self;
 
@@ -131,6 +139,14 @@ impl Add for Vec3 {
 
     fn add(self, rhs: Self) -> Self::Output {
         Self::new(self.x + rhs.x, self.y + rhs.y, self.z + rhs.z)
+    }
+}
+
+impl AddAssign for Vec3 {
+    fn add_assign(&mut self, rhs: Self) {
+        self.x += rhs.x;
+        self.y += rhs.y;
+        self.z += rhs.z;
     }
 }
 
@@ -175,17 +191,17 @@ pub struct Mat4 {
 }
 
 impl Mat4 {
-    pub fn identity() -> Self {
-        Self {
-            #[rustfmt::skip]
-            m: [
-                1.0, 0.0, 0.0, 0.0,
-                0.0, 1.0, 0.0, 0.0,
-                0.0, 0.0, 1.0, 0.0,
-                0.0, 0.0, 0.0, 1.0,
-            ],
-        }
-    }
+    // pub fn identity() -> Self {
+    //     Self {
+    //         #[rustfmt::skip]
+    //         m: [
+    //             1.0, 0.0, 0.0, 0.0,
+    //             0.0, 1.0, 0.0, 0.0,
+    //             0.0, 0.0, 1.0, 0.0,
+    //             0.0, 0.0, 0.0, 1.0,
+    //         ],
+    //     }
+    // }
 
     // pub fn zero() -> Self {
     //     Self { m: [0.0; 16] }

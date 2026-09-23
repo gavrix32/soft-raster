@@ -1,4 +1,4 @@
-use crate::math::Vec2U;
+use crate::math::{Vec2U, Vec3};
 use std::fs::File;
 use std::io::{BufWriter, Write};
 use std::path::Path;
@@ -20,10 +20,15 @@ impl Framebuffer {
         }
     }
 
-    // fn clear_color(&mut self) {}
+    pub fn clear_color(&mut self, color: Vec3) {
+        for chunk in self.color.as_chunks_mut::<3>().0 {
+            chunk.copy_from_slice(&to_rgb8(color));
+        }
+    }
+
     // fn clear_depth(&mut self) {}
 
-    pub fn set_pixel(&mut self, p: Vec2U, color: &[u8], depth: f32) {
+    pub fn set_pixel(&mut self, p: Vec2U, color: Vec3, depth: f32) {
         if p.x >= self.width || p.y >= self.height {
             return;
         }
@@ -32,7 +37,7 @@ impl Framebuffer {
             return;
         }
         let base = index * 3;
-        self.color[base..base + 3].copy_from_slice(color);
+        self.color[base..base + 3].copy_from_slice(&to_rgb8(color));
         self.depth[index] = depth;
     }
 
@@ -47,4 +52,12 @@ impl Framebuffer {
         writer.write_all(&self.color)?;
         writer.flush()
     }
+}
+
+fn to_rgb8(color: Vec3) -> [u8; 3] {
+    [
+        (color.x * 255.0) as u8,
+        (color.y * 255.0) as u8,
+        (color.z * 255.0) as u8,
+    ]
 }
