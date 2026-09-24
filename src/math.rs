@@ -40,17 +40,65 @@ impl Sub for Vec2I {
     }
 }
 
-// #[derive(Copy, Clone)]
-// pub struct Vec2 {
-//     pub x: f32,
-//     pub y: f32,
-// }
-//
-// impl Vec2 {
-//     fn new(x: f32, y: f32) -> Vec2 {
-//         Self { x, y }
-//     }
-// }
+impl Sub<i32> for Vec2I {
+    type Output = Self;
+
+    fn sub(self, rhs: i32) -> Self::Output {
+        Self::new(self.x - rhs, self.y - rhs)
+    }
+}
+
+impl Add<i32> for Vec2I {
+    type Output = Self;
+
+    fn add(self, rhs: i32) -> Self::Output {
+        Self::new(self.x + rhs, self.y + rhs)
+    }
+}
+
+#[derive(Copy, Clone)]
+pub struct Vec2 {
+    pub x: f32,
+    pub y: f32,
+}
+
+impl Vec2 {
+    pub fn new(x: f32, y: f32) -> Vec2 {
+        Self { x, y }
+    }
+
+    pub fn splat(v: f32) -> Self {
+        Self::new(v, v)
+    }
+
+    pub fn from_array(a: [f32; 2]) -> Self {
+        Self::new(a[0], a[1])
+    }
+}
+
+impl Add for Vec2 {
+    type Output = Self;
+
+    fn add(self, rhs: Self) -> Self::Output {
+        Self::new(self.x + rhs.x, self.y + rhs.y)
+    }
+}
+
+impl Div<f32> for Vec2 {
+    type Output = Self;
+
+    fn div(self, rhs: f32) -> Self::Output {
+        Self::new(self.x / rhs, self.y / rhs)
+    }
+}
+
+impl Mul<f32> for Vec2 {
+    type Output = Self;
+
+    fn mul(self, rhs: f32) -> Self::Output {
+        Self::new(self.x * rhs, self.y * rhs)
+    }
+}
 
 #[derive(Copy, Clone)]
 pub struct Vec3 {
@@ -272,4 +320,11 @@ impl Mul for Mat4 {
         }
         Self { m }
     }
+}
+
+pub fn bary_lerp<T>(bary: Vec3, v0: T, v1: T, v2: T) -> T
+where
+    T: Copy + Add<Output = T> + Mul<f32, Output = T>,
+{
+    v0 * bary.x + v1 * bary.y + v2 * bary.z
 }

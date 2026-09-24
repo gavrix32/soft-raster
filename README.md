@@ -7,6 +7,7 @@
 ![out_bunny.png](showcase/out_bunny.png)
 ![out_triangles.png](showcase/out_triangles.png)
 ![out_shading.png](showcase/out_shading.png)
+![african_head.png](showcase/african_head.png)
 
 ## Features
 ## Build & Run
