@@ -49,7 +49,11 @@ impl Framebuffer {
         writeln!(writer, "{} {}", self.width, self.height)?; // Image size
         writeln!(writer, "{}", "255")?; // Max value
 
-        writer.write_all(&self.color)?;
+        // flip Y axis
+        for row in self.color.chunks(self.width * 3).rev() {
+            writer.write_all(row)?;
+        }
+
         writer.flush()
     }
 }

@@ -55,7 +55,7 @@ impl<'a> Rasterizer<'a> {
 
     fn ndc_to_screen(&self, v: Vec3) -> Vec2I {
         let x = ((v.x + 1.0) / 2.0) * (self.framebuffer.width - 1) as f32;
-        let y = ((-v.y + 1.0) / 2.0) * (self.framebuffer.height - 1) as f32;
+        let y = ((v.y + 1.0) / 2.0) * (self.framebuffer.height - 1) as f32;
 
         Vec2I {
             x: x.floor() as i32,
@@ -153,17 +153,13 @@ impl<'a> Rasterizer<'a> {
     }
 
     fn fill_triangle(&mut self, v0: Vertex, v1: Vertex, v2: Vertex, material: &Material) {
-        // CW -> CCW
-        let (uv0, uv1, uv2) = (v0.texcoord, v2.texcoord, v1.texcoord);
-        let (n0, n1, n2) = (v0.normal, v2.normal, v1.normal);
-        let (v0, v1, v2) = (v0.position, v2.position, v1.position);
-
-        let (p0, z0, w0) = self.project(v0);
-        let (p1, z1, w1) = self.project(v1);
-        let (p2, z2, w2) = self.project(v2);
+        let (p0, z0, w0) = self.project(v0.position);
+        let (p1, z1, w1) = self.project(v1.position);
+        let (p2, z2, w2) = self.project(v2.position);
 
         let area = (p1 - p0).cross(p2 - p0);
 
+        // back face culling
         if area <= 0 {
             return;
         }
@@ -195,17 +191,17 @@ impl<'a> Rasterizer<'a> {
         let mut e1_x = (p0 - p2).cross(bbox_min - p2);
         let mut e2_x = (p1 - p0).cross(bbox_min - p0);
 
-        let v0_w = v0 / w0;
-        let v1_w = v1 / w1;
-        let v2_w = v2 / w2;
+        let v0_w = v0.position / w0;
+        let v1_w = v1.position / w1;
+        let v2_w = v2.position / w2;
 
-        let uv0_w = uv0 / w0;
-        let uv1_w = uv1 / w1;
-        let uv2_w = uv2 / w2;
+        let uv0_w = v0.texcoord / w0;
+        let uv1_w = v1.texcoord / w1;
+        let uv2_w = v2.texcoord / w2;
 
-        let n0_w = n0 / w0;
-        let n1_w = n1 / w1;
-        let n2_w = n2 / w2;
+        let n0_w = v0.normal / w0;
+        let n1_w = v1.normal / w1;
+        let n2_w = v2.normal / w2;
 
         for y in bbox_min.y..=bbox_max.y {
             let mut e0 = e0_x;
